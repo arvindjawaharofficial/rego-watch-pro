@@ -5,9 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Fleet RTO · Indian Vehicle Compliance Tracker" },
+      { title: "TMA" },
       { name: "description", content: "Track Insurance, FC, PUC, Road Tax, Permit and RC expiries for your fleet." },
-      { property: "og:title", content: "Fleet RTO · Indian Vehicle Compliance Tracker" },
+      { property: "og:title", content: "TMA" },
       { property: "og:description", content: "Track Insurance, FC, PUC, Road Tax, Permit and RC expiries for your fleet." },
     ],
   }),
