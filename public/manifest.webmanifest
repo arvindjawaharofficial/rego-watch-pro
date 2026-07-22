@@ -1,0 +1,12 @@
+{
+  "name": "Fleet RTO · India Compliance",
+  "short_name": "Fleet RTO",
+  "description": "Track Insurance, FC, PUC, Road Tax, Permit and RC expiries for your Indian fleet.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}
