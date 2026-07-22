@@ -14,7 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          assigned_driver: string | null
+          created_at: string
+          created_by: string | null
+          fc_expiry: string | null
+          id: string
+          insurance_expiry: string | null
+          license_plate: string
+          make_model: string
+          permit_expiry: string | null
+          puc_expiry: string | null
+          rc_expiry: string | null
+          road_tax_expiry: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_driver?: string | null
+          created_at?: string
+          created_by?: string | null
+          fc_expiry?: string | null
+          id?: string
+          insurance_expiry?: string | null
+          license_plate: string
+          make_model: string
+          permit_expiry?: string | null
+          puc_expiry?: string | null
+          rc_expiry?: string | null
+          road_tax_expiry?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_driver?: string | null
+          created_at?: string
+          created_by?: string | null
+          fc_expiry?: string | null
+          id?: string
+          insurance_expiry?: string | null
+          license_plate?: string
+          make_model?: string
+          permit_expiry?: string | null
+          puc_expiry?: string | null
+          rc_expiry?: string | null
+          road_tax_expiry?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +97,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role: "Admin" | "Manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +224,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["Admin", "Manager"],
+    },
   },
 } as const
