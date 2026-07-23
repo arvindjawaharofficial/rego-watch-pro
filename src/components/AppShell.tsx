@@ -54,6 +54,29 @@ function useVehicleAlerts() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { data: alerts = [] } = useVehicleAlerts();
+  const [pushState, setPushState] = useState<"idle" | "enabling" | "enabled" | "denied">("idle");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ("Notification" in window && Notification.permission === "granted") {
+      setPushState("enabled");
+    } else if ("Notification" in window && Notification.permission === "denied") {
+      setPushState("denied");
+    }
+    listenForegroundMessages((title, body) => toast(title, { description: body }));
+  }, []);
+
+  async function enablePush() {
+    setPushState("enabling");
+    const res = await enablePushNotifications();
+    if (res.ok) {
+      setPushState("enabled");
+      toast.success("Push notifications enabled on this device");
+    } else {
+      setPushState(res.reason === "Permission denied" ? "denied" : "idle");
+      toast.error(res.reason);
+    }
+  }
 
   async function signOut() {
     await supabase.auth.signOut();
