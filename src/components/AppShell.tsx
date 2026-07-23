@@ -107,7 +107,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SheetHeader>
                   <SheetTitle>Alerts</SheetTitle>
                 </SheetHeader>
-                <div className="mt-4 space-y-2 overflow-y-auto max-h-[calc(100vh-6rem)] pr-1">
+                <div className="mt-4 mb-3 rounded-xl border p-3 bg-muted/40">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BellRing className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Push notifications</span>
+                  </div>
+                  {pushState === "enabled" ? (
+                    <p className="text-xs text-muted-foreground">Enabled on this device. You'll get alerts when documents are due.</p>
+                  ) : pushState === "denied" ? (
+                    <p className="text-xs text-muted-foreground">Blocked by your browser. Enable notifications in site settings.</p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground mb-2">Get an alert on this device before documents expire.</p>
+                      <Button size="sm" onClick={enablePush} disabled={pushState === "enabling"}>
+                        {pushState === "enabling" ? "Enabling..." : "Enable notifications"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-14rem)] pr-1">
+
                   {alerts.length === 0 && (
                     <p className="text-sm text-muted-foreground">All clear. No documents expiring soon.</p>
                   )}
