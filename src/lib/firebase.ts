@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Firebase Web config values are publishable identifiers (safe in client code).
 // Replace `apiKey` below with the value from Firebase Console → Project settings.
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBpublic-placeholder",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAIWikOhvovjxDQgf2Ap9i_8JNgtOk8pho",
   authDomain: "tma-fleet.firebaseapp.com",
   projectId: "tma-fleet",
   storageBucket: "tma-fleet.firebasestorage.app",
