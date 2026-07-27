@@ -6,13 +6,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Truck } from "lucide-react";
+import tmaLogo from "@/assets/tma-logo.jpg.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in · Fleet RTO" },
+      { title: "Sign in · TMA Fleet" },
       { name: "description", content: "Sign in to manage your Indian vehicle fleet RTO compliance." },
     ],
   }),
@@ -25,6 +33,9 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -57,15 +68,30 @@ function AuthPage() {
     toast.success("Account created. You can sign in now.");
   }
 
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) return toast.error(error.message);
+    toast.success("Password reset link sent. Check your email.");
+    setForgotOpen(false);
+    setForgotEmail("");
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="h-11 w-11 rounded-2xl bg-primary text-primary-foreground grid place-items-center">
-            <Truck className="h-6 w-6" />
-          </div>
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <img
+            src={tmaLogo.url}
+            alt="TMA Fleet"
+            className="h-14 w-14 rounded-2xl object-cover bg-white"
+          />
           <div>
-            <h1 className="text-xl font-bold leading-tight">Fleet RTO</h1>
+            <h1 className="text-xl font-bold leading-tight">TMA Fleet</h1>
             <p className="text-xs text-muted-foreground">India Compliance Tracker</p>
           </div>
         </div>
@@ -87,7 +113,19 @@ function AuthPage() {
                     <Input id="si-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                   <div>
-                    <Label htmlFor="si-pass">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="si-pass">Password</Label>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() => {
+                          setForgotEmail(email);
+                          setForgotOpen(true);
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
                     <Input id="si-pass" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <Button className="w-full h-12" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</Button>
@@ -114,6 +152,37 @@ function AuthPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+            <DialogDescription>
+              Enter the email on your account and we'll send you a link to set a new password.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgot} className="space-y-4">
+            <div>
+              <Label htmlFor="fp-email">Email</Label>
+              <Input
+                id="fp-email"
+                type="email"
+                required
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setForgotOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={forgotLoading}>
+                {forgotLoading ? "Sending..." : "Send reset link"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
