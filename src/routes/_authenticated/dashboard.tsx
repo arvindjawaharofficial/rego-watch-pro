@@ -14,7 +14,7 @@ import { overallStatus } from "@/lib/compliance";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Fleet Dashboard · Fleet RTO" },
+      { title: "Fleet Dashboard · TMA Fleet" },
       { name: "description", content: "All vehicles and their RTO compliance status at a glance." },
     ],
   }),
@@ -63,7 +63,7 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <StatCard color="emerald" label="Compliant" value={counts.green} />
+        <StatCard color="emerald" label="Up to Date" value={counts.green} />
         <StatCard color="amber" label="Due soon" value={counts.yellow} />
         <StatCard color="red" label="Action needed" value={counts.red} />
       </div>

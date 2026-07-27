@@ -1,5 +1,6 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Bell, BellRing, LogOut, Truck } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Bell, BellRing, User } from "lucide-react";
+import tmaLogo from "@/assets/tma-logo.jpg.asset.json";
 import { useEffect, useState } from "react";
 import { enablePushNotifications, listenForegroundMessages } from "@/lib/firebase";
 import { toast } from "sonner";
@@ -52,7 +53,6 @@ function useVehicleAlerts() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
   const { data: alerts = [] } = useVehicleAlerts();
   const [pushState, setPushState] = useState<"idle" | "enabling" | "enabled" | "denied">("idle");
 
@@ -78,20 +78,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }
+
+
 
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-3xl px-4 h-14 flex items-center gap-3">
           <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
-            <div className="h-8 w-8 shrink-0 rounded-xl bg-primary text-primary-foreground grid place-items-center">
-              <Truck className="h-4 w-4" />
-            </div>
-            <span className="font-bold truncate">Fleet RTO</span>
+            <img
+              src={tmaLogo.url}
+              alt="TMA Fleet"
+              className="h-9 w-9 shrink-0 rounded-xl object-cover bg-white"
+            />
+            <span className="font-bold truncate">TMA Fleet</span>
           </Link>
           <div className="ml-auto flex items-center gap-1">
             <Sheet>
@@ -158,8 +158,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </SheetContent>
             </Sheet>
-            <Button variant="ghost" size="icon" className="h-10 w-10" onClick={signOut} aria-label="Sign out">
-              <LogOut className="h-5 w-5" />
+            <Button asChild variant="ghost" size="icon" className="h-10 w-10" aria-label="Profile">
+              <Link to="/profile"><User className="h-5 w-5" /></Link>
             </Button>
           </div>
         </div>
