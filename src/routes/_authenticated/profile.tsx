@@ -84,6 +84,19 @@ function ProfilePage() {
     <AppShell>
       <h1 className="text-2xl font-bold tracking-tight mb-4">Profile</h1>
 
+      <Tabs defaultValue="account">
+        <TabsList className="grid grid-cols-2 w-full mb-4">
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="approved" disabled={!isAdmin}>
+            Approved emails
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="approved">{isAdmin && <ApprovedEmails />}</TabsContent>
+
+        <TabsContent value="account" className="space-y-4">
+
+
       <Card>
         <CardHeader>
           <CardTitle>Your account</CardTitle>
