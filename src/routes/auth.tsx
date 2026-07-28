@@ -43,29 +43,49 @@ function AuthPage() {
     });
   }, [navigate]);
 
+  async function guardApproved(addr: string) {
+    const approved = await isEmailApproved(addr);
+    if (!approved) {
+      toast.error("This email isn't approved. Ask your fleet admin to add it first.");
+    }
+    return approved;
+  }
+
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    navigate({ to: "/dashboard", replace: true });
+    try {
+      if (!(await guardApproved(email))) return;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return toast.error(error.message);
+      navigate({ to: "/dashboard", replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { full_name: name },
-      },
-    });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    toast.success("Account created. You can sign in now.");
+    try {
+      if (!(await guardApproved(email))) return;
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { full_name: name },
+        },
+      });
+      if (error) return toast.error(error.message);
+      toast.success("Account created. You can sign in now.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sign up failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleForgot(e: React.FormEvent) {
