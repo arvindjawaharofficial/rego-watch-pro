@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { isEmailApproved } from "@/lib/access";
 import tmaLogo from "@/assets/tma-logo.jpg.asset.json";
 
 export const Route = createFileRoute("/auth")({
