@@ -27,6 +27,8 @@ export const Route = createFileRoute("/_authenticated/profile")({
 function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: isAdmin = false } = useIsAdmin();
+
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
