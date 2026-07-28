@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ApprovedEmails } from "@/components/ApprovedEmails";
+import { useIsAdmin } from "@/lib/access";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 
