@@ -153,7 +153,7 @@ function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle>Session</CardTitle>
           <CardDescription>Sign out of this device.</CardDescription>
@@ -164,6 +164,8 @@ function ProfilePage() {
           </Button>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }
