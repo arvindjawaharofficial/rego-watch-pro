@@ -56,6 +56,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: alerts = [] } = useVehicleAlerts();
   const [pushState, setPushState] = useState<"idle" | "enabling" | "enabled" | "denied">("idle");
 
+  // Sign out immediately if the admin removed this account from the approved list.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const email = data.user?.email;
+      if (!email) return;
+      const { data: approved, error } = await supabase.rpc("is_email_approved", { _email: email });
+      if (cancelled || error) return;
+      if (!approved) {
+        toast.error("Your access was revoked by the admin.");
+        await supabase.auth.signOut();
+        window.location.href = "/auth";
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if ("Notification" in window && Notification.permission === "granted") {
@@ -65,6 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     listenForegroundMessages((title, body) => toast(title, { description: body }));
   }, []);
+
 
   async function enablePush() {
     setPushState("enabling");

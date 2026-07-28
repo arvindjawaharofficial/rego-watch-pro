@@ -270,3 +270,59 @@ bun add @capacitor/push-notifications
 - Supabase project ref: see `.env` `VITE_SUPABASE_PROJECT_ID`
 - Firebase project: `tma-fleet` (VAPID + service account already provisioned)
 - Published URL: https://rego-watch-pro.lovable.app
+
+---
+
+## 7. Access Control (Admin + Approved Emails)
+
+- **Admin account:** `tma.fleetrto@gmail.com`. On signup, `public.handle_new_user()`
+  assigns it the `Admin` role; every other address gets `Manager`.
+- **Roles table:** `public.user_roles (user_id, role)` — roles are NOT read from
+  `profiles` for authorization. Use `public.has_role(uuid, app_role)`
+  (SECURITY DEFINER) in policies. A trigger on `profiles` silently reverts
+  self-service role changes by non-admins.
+- **Allowlist:** `public.approved_emails`. Admin-only read/write via RLS.
+  Anonymous visitors can only call `public.is_email_approved(text)`, which returns
+  a boolean and never leaks the list.
+- **Enforcement:** `src/routes/auth.tsx` blocks sign-in/sign-up for non-approved
+  emails; `AppShell` re-checks on every mount and signs out revoked users.
+  Admin UI lives in `src/components/ApprovedEmails.tsx` (Profile → Approved emails).
+
+## 8. Building a Standalone Android APK (Capacitor, free)
+
+The web app is a Vite/TanStack Start SPA-ish build; for the APK, ship the client
+bundle and keep talking to the hosted backend.
+
+```bash
+npm i @capacitor/core @capacitor/android @capacitor/push-notifications
+npm i -D @capacitor/cli
+npx cap init "TMA Fleet" com.tma.fleet --web-dir=dist/client
+npm run build
+npx cap add android
+npx cap sync android
+npx cap open android      # Android Studio → Build → Build APK(s)
+```
+
+Key points:
+
+1. **capacitor.config.ts** — set `server: { url: "https://rego-watch-pro.lovable.app", cleartext: false }`
+   to load the hosted app (simplest, keeps SSR routes working and auto-updates the
+   app without republishing the APK). Omit `server.url` only if you switch the
+   build to a fully static client bundle.
+2. **Push notifications** — the web service worker (`firebase-messaging-sw.js`) does
+   NOT run inside a WebView. Use `@capacitor/push-notifications`, add
+   `android/app/google-services.json` from the Firebase console (package name must
+   match `com.tma.fleet`), and register the returned FCM token into `push_tokens`
+   using the same upsert as `src/lib/firebase.ts`. Server side needs no change —
+   `check-expiries` sends to every token in the table.
+3. **Auth deep links** — password-reset / email-confirm links open the browser.
+   Add an `intent-filter` for `https://rego-watch-pro.lovable.app` (App Links) or
+   set a custom scheme and pass it as `emailRedirectTo`.
+4. **Signing** — generate a keystore (`keytool -genkey -v -keystore tma.jks ...`),
+   configure `signingConfigs` in `android/app/build.gradle`, then
+   `./gradlew assembleRelease` (APK) or `bundleRelease` (AAB for Play Store).
+5. **Costs** — Capacitor, Android Studio and FCM are free; only a Play Store
+   listing costs a one-time $25. Sideloading the APK is free.
+6. **UI notes** — add `viewport-fit=cover` + safe-area padding for gesture bars,
+   verify native date pickers on `<input type="date">` in the WebView, and test
+   offline behaviour (React Query cache is memory-only today).

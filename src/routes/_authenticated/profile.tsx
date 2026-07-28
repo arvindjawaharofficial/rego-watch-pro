@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ApprovedEmails } from "@/components/ApprovedEmails";
+import { useIsAdmin } from "@/lib/access";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +27,8 @@ export const Route = createFileRoute("/_authenticated/profile")({
 function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: isAdmin = false } = useIsAdmin();
+
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
@@ -84,6 +89,19 @@ function ProfilePage() {
     <AppShell>
       <h1 className="text-2xl font-bold tracking-tight mb-4">Profile</h1>
 
+      <Tabs defaultValue="account">
+        <TabsList className="grid grid-cols-2 w-full mb-4">
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="approved" disabled={!isAdmin}>
+            Approved emails
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="approved">{isAdmin && <ApprovedEmails />}</TabsContent>
+
+        <TabsContent value="account" className="space-y-4">
+
+
       <Card>
         <CardHeader>
           <CardTitle>Your account</CardTitle>
@@ -140,7 +158,7 @@ function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle>Session</CardTitle>
           <CardDescription>Sign out of this device.</CardDescription>
@@ -151,6 +169,8 @@ function ProfilePage() {
           </Button>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }
