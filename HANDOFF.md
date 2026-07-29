@@ -242,7 +242,7 @@ bun add @capacitor/push-notifications
 2. **Roles unused** — `profiles.role` exists but no UI or RLS enforces Admin vs Manager. If required, migrate to a dedicated `user_roles` table.
 3. **Edge Function is unauthenticated** — daily cron endpoint should verify a shared secret before sending pushes.
 4. **No email verification** on signup — configurable in Supabase Auth settings.
-5. **5-user cap not enforced** — the spec calls for max 5 users but nothing blocks signup #6. Add a DB trigger on `auth.users` insert that raises if `count(*) >= 5`.
+5. **User count is unlimited** — the old 5-user cap was removed; access is controlled purely by the `approved_emails` allowlist.
 6. **Icons**: `manifest.webmanifest` only references `/favicon.ico`. Add proper 192px + 512px PNG icons for install prompts and APK adaptive icons.
 7. **Foreground notifications** rely on `sonner` toasts — verify the `onMessage` listener is initialized once in `AppShell` and not duplicated.
 8. **No `og:image`** on any route — social preview will fall back to Lovable's screenshot.
@@ -276,7 +276,13 @@ bun add @capacitor/push-notifications
 ## 7. Access Control (Admin + Approved Emails)
 
 - **Admin account:** `tma.fleetrto@gmail.com`. On signup, `public.handle_new_user()`
-  assigns it the `Admin` role; every other address gets `Manager`.
+  assigns it the `Admin` role; every other address gets `Manager` and an Admin can
+  promote/demote them from Profile → Users (`src/components/UserRoles.tsx`), which
+  rewrites both `user_roles` and the display field `profiles.role`.
+- **Admin-only visibility:** the Approved-emails and Users tabs are rendered only
+  when `useIsAdmin()` is true, and RLS blocks non-admin reads/writes server-side.
+- **Notification schedule:** three pg_cron jobs — `rto-expiry-check-0800ist`,
+  `-1300ist`, `-1800ist` (02:30 / 07:30 / 12:30 UTC) all POST to `check-expiries`.
 - **Roles table:** `public.user_roles (user_id, role)` — roles are NOT read from
   `profiles` for authorization. Use `public.has_role(uuid, app_role)`
   (SECURITY DEFINER) in policies. A trigger on `profiles` silently reverts
@@ -288,41 +294,72 @@ bun add @capacitor/push-notifications
   emails; `AppShell` re-checks on every mount and signs out revoked users.
   Admin UI lives in `src/components/ApprovedEmails.tsx` (Profile → Approved emails).
 
-## 8. Building a Standalone Android APK (Capacitor, free)
+## 8. Building a Fully Independent Android APK (zero subscription)
 
-The web app is a Vite/TanStack Start SPA-ish build; for the APK, ship the client
-bundle and keep talking to the hosted backend.
+Goal: an APK that runs on its own (no Lovable hosting dependency) with push
+notifications, using only free tiers.
+
+### 8.1 Make the web build fully static
+The APK must bundle its own HTML/JS, so disable SSR/prerender-only behaviour and
+ship the client bundle:
 
 ```bash
-npm i @capacitor/core @capacitor/android @capacitor/push-notifications
+npm run build            # outputs dist/client
+```
+All data access in this app is client-side Supabase, so the static bundle is
+functionally complete. Do NOT set `server.url` in `capacitor.config.ts` — that
+would make the APK depend on the hosted site.
+
+### 8.2 Capacitor setup
+```bash
+npm i @capacitor/core @capacitor/android @capacitor/push-notifications @capacitor/app
 npm i -D @capacitor/cli
 npx cap init "TMA Fleet" com.tma.fleet --web-dir=dist/client
-npm run build
 npx cap add android
 npx cap sync android
 npx cap open android      # Android Studio → Build → Build APK(s)
 ```
+`capacitor.config.ts`:
+```ts
+export default {
+  appId: "com.tma.fleet",
+  appName: "TMA Fleet",
+  webDir: "dist/client",
+  android: { allowMixedContent: false },
+};
+```
 
-Key points:
+### 8.3 Native push (free, FCM)
+1. Firebase console → Android app with package `com.tma.fleet` → download
+   `google-services.json` → place in `android/app/`.
+2. Replace the web SW flow with `@capacitor/push-notifications` at runtime:
+```ts
+import { PushNotifications } from "@capacitor/push-notifications";
+await PushNotifications.requestPermissions();
+await PushNotifications.register();
+PushNotifications.addListener("registration", async ({ value }) => {
+  await supabase.from("push_tokens").upsert(
+    { user_id: uid, token: value, user_agent: "android" }, { onConflict: "token" });
+});
+```
+   Keep `src/lib/firebase.ts` for the browser build; branch on
+   `Capacitor.isNativePlatform()`.
+3. Server side needs no change — `check-expiries` already pushes to every token
+   via the FCM HTTP v1 API (free, unlimited).
 
-1. **capacitor.config.ts** — set `server: { url: "https://rego-watch-pro.lovable.app", cleartext: false }`
-   to load the hosted app (simplest, keeps SSR routes working and auto-updates the
-   app without republishing the APK). Omit `server.url` only if you switch the
-   build to a fully static client bundle.
-2. **Push notifications** — the web service worker (`firebase-messaging-sw.js`) does
-   NOT run inside a WebView. Use `@capacitor/push-notifications`, add
-   `android/app/google-services.json` from the Firebase console (package name must
-   match `com.tma.fleet`), and register the returned FCM token into `push_tokens`
-   using the same upsert as `src/lib/firebase.ts`. Server side needs no change —
-   `check-expiries` sends to every token in the table.
-3. **Auth deep links** — password-reset / email-confirm links open the browser.
-   Add an `intent-filter` for `https://rego-watch-pro.lovable.app` (App Links) or
-   set a custom scheme and pass it as `emailRedirectTo`.
-4. **Signing** — generate a keystore (`keytool -genkey -v -keystore tma.jks ...`),
-   configure `signingConfigs` in `android/app/build.gradle`, then
-   `./gradlew assembleRelease` (APK) or `bundleRelease` (AAB for Play Store).
-5. **Costs** — Capacitor, Android Studio and FCM are free; only a Play Store
-   listing costs a one-time $25. Sideloading the APK is free.
-6. **UI notes** — add `viewport-fit=cover` + safe-area padding for gesture bars,
-   verify native date pickers on `<input type="date">` in the WebView, and test
-   offline behaviour (React Query cache is memory-only today).
+### 8.4 Costs — everything used here is free
+| Service | Free tier | Notes |
+|---|---|---|
+| Capacitor + Android Studio | Free | Open source |
+| Firebase Cloud Messaging | Free, unmetered | No Blaze plan required for FCM |
+| Supabase / Lovable Cloud | Free tier | DB, auth, edge function, pg_cron |
+| Sideloaded APK distribution | Free | Play Store listing is a one-time $25, optional |
+
+### 8.5 Other native concerns
+1. **Auth deep links** — password-reset / confirm emails open a browser. Register
+   an App Link intent-filter or a custom scheme and pass it as `emailRedirectTo`.
+2. **Signing** — `keytool -genkey -v -keystore tma.jks -alias tma -keyalg RSA -keysize 2048 -validity 10000`,
+   wire `signingConfigs` in `android/app/build.gradle`, then `./gradlew assembleRelease`.
+3. **UI** — add `viewport-fit=cover` + safe-area padding, verify `<input type="date">`
+   pickers in the WebView, and test offline (React Query cache is memory-only).
+4. **Icons** — supply 192/512 PNG + adaptive icons; today the manifest only has a favicon.

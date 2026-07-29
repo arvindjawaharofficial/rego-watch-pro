@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApprovedEmails } from "@/components/ApprovedEmails";
+import { UserRoles } from "@/components/UserRoles";
 import { useIsAdmin } from "@/lib/access";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
@@ -90,14 +91,23 @@ function ProfilePage() {
       <h1 className="text-2xl font-bold tracking-tight mb-4">Profile</h1>
 
       <Tabs defaultValue="account">
-        <TabsList className="grid grid-cols-2 w-full mb-4">
+        <TabsList className={`grid w-full mb-4 ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
           <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="approved" disabled={!isAdmin}>
-            Approved emails
-          </TabsTrigger>
+          {isAdmin && <TabsTrigger value="approved">Approved emails</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="approved">{isAdmin && <ApprovedEmails />}</TabsContent>
+        {isAdmin && (
+          <>
+            <TabsContent value="approved">
+              <ApprovedEmails />
+            </TabsContent>
+            <TabsContent value="users">
+              <UserRoles />
+            </TabsContent>
+          </>
+        )}
+
 
         <TabsContent value="account" className="space-y-4">
 

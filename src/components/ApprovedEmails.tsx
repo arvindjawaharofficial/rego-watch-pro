@@ -55,7 +55,6 @@ export function ApprovedEmails() {
     e.preventDefault();
     const value = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return toast.error("Enter a valid email address.");
-    if (rows.length >= 5) return toast.error("Maximum of 5 approved users reached.");
     addMutation.mutate(value);
   }
 
@@ -64,7 +63,7 @@ export function ApprovedEmails() {
       <CardHeader>
         <CardTitle>Approved emails</CardTitle>
         <CardDescription>
-          Only these addresses can sign up or sign in. Up to 5 users.
+          Only these addresses can sign up or sign in. No limit on the number of users.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
