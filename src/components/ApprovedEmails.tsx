@@ -64,7 +64,7 @@ export function ApprovedEmails() {
       <CardHeader>
         <CardTitle>Approved emails</CardTitle>
         <CardDescription>
-          Only these addresses can sign up or sign in. Up to 5 users.
+          Only these addresses can sign up or sign in. No limit on the number of users.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
