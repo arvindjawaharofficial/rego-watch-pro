@@ -55,7 +55,6 @@ export function ApprovedEmails() {
     e.preventDefault();
     const value = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return toast.error("Enter a valid email address.");
-    if (rows.length >= 5) return toast.error("Maximum of 5 approved users reached.");
     addMutation.mutate(value);
   }
 
