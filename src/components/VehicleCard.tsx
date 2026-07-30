@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatBadge, issuesFor, overallStatus, type Vehicle } from "@/lib/compliance";
 
 const statusStyles: Record<string, { dot: string; ring: string; label: string }> = {
-  green: { dot: "bg-emerald-500", ring: "ring-emerald-500/20", label: "Compliant" },
+  green: { dot: "bg-emerald-500", ring: "ring-emerald-500/20", label: "Up to Date" },
   yellow: { dot: "bg-amber-500", ring: "ring-amber-500/20", label: "Renewal due" },
   red: { dot: "bg-red-500", ring: "ring-red-500/20", label: "Action required" },
 };

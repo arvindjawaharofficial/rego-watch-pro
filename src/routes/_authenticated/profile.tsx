@@ -129,7 +129,7 @@ function ProfilePage() {
               <div>
                 <Label>Role</Label>
                 <div className="mt-1">
-                  <Badge variant="secondary">{profile.role}</Badge>
+                  <Badge variant="secondary">{isAdmin ? "Admin" : profile.role}</Badge>
                 </div>
               </div>
               <div>

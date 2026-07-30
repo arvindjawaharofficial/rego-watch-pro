@@ -296,70 +296,128 @@ bun add @capacitor/push-notifications
 
 ## 8. Building a Fully Independent Android APK (zero subscription)
 
-Goal: an APK that runs on its own (no Lovable hosting dependency) with push
-notifications, using only free tiers.
+Goal: an APK that ships its own HTML/JS bundle (no Lovable hosting dependency),
+with working push notifications, using only free tiers.
 
-### 8.1 Make the web build fully static
-The APK must bundle its own HTML/JS, so disable SSR/prerender-only behaviour and
-ship the client bundle:
+### 8.0 Prerequisites (one time)
+- Node 20+ and npm (or bun)
+- Android Studio (latest) with **Android SDK Platform 34+** and **Build Tools**
+- JDK 17 (bundled with Android Studio: *Settings → Build Tools → Gradle → Gradle JDK*)
+- A Firebase project (`tma-fleet`) — already created for this app
 
+### 8.1 Export the code and install
+```bash
+git clone <your-github-repo> tma-fleet && cd tma-fleet
+npm install
+```
+
+### 8.2 Produce the static web build
 ```bash
 npm run build            # outputs dist/client
 ```
-All data access in this app is client-side Supabase, so the static bundle is
-functionally complete. Do NOT set `server.url` in `capacitor.config.ts` — that
-would make the APK depend on the hosted site.
+All data access is client-side Supabase (`VITE_SUPABASE_*` in `.env`), so the
+static bundle is functionally complete offline of Lovable.
+Do **not** set `server.url` in `capacitor.config.ts` — that makes the APK depend
+on the hosted site.
 
-### 8.2 Capacitor setup
+### 8.3 Add Capacitor
 ```bash
-npm i @capacitor/core @capacitor/android @capacitor/push-notifications @capacitor/app
+npm i @capacitor/core @capacitor/android @capacitor/app @capacitor/push-notifications
 npm i -D @capacitor/cli
 npx cap init "TMA Fleet" com.tma.fleet --web-dir=dist/client
 npx cap add android
-npx cap sync android
-npx cap open android      # Android Studio → Build → Build APK(s)
 ```
 `capacitor.config.ts`:
 ```ts
-export default {
+import type { CapacitorConfig } from "@capacitor/cli";
+
+const config: CapacitorConfig = {
   appId: "com.tma.fleet",
   appName: "TMA Fleet",
   webDir: "dist/client",
   android: { allowMixedContent: false },
+  plugins: { PushNotifications: { presentationOptions: ["badge", "sound", "alert"] } },
 };
+export default config;
+```
+Re-run after **every** web change:
+```bash
+npm run build && npx cap sync android
 ```
 
-### 8.3 Native push (free, FCM)
-1. Firebase console → Android app with package `com.tma.fleet` → download
-   `google-services.json` → place in `android/app/`.
-2. Replace the web SW flow with `@capacitor/push-notifications` at runtime:
+### 8.4 Native push (free, FCM)
+1. Firebase console → *Project settings → Your apps → Add Android app*,
+   package name `com.tma.fleet`. Download `google-services.json` into
+   `android/app/`.
+2. `android/build.gradle` → `classpath 'com.google.gms:google-services:4.4.2'`;
+   `android/app/build.gradle` → `apply plugin: 'com.google.gms.google-services'`.
+3. In the app, branch on platform (web keeps `src/lib/firebase.ts`):
 ```ts
+import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
-await PushNotifications.requestPermissions();
-await PushNotifications.register();
-PushNotifications.addListener("registration", async ({ value }) => {
-  await supabase.from("push_tokens").upsert(
-    { user_id: uid, token: value, user_agent: "android" }, { onConflict: "token" });
-});
-```
-   Keep `src/lib/firebase.ts` for the browser build; branch on
-   `Capacitor.isNativePlatform()`.
-3. Server side needs no change — `check-expiries` already pushes to every token
-   via the FCM HTTP v1 API (free, unlimited).
 
-### 8.4 Costs — everything used here is free
+if (Capacitor.isNativePlatform()) {
+  const perm = await PushNotifications.requestPermissions();
+  if (perm.receive === "granted") await PushNotifications.register();
+  PushNotifications.addListener("registration", async ({ value }) => {
+    await supabase.from("push_tokens").upsert(
+      { user_id: uid, token: value, user_agent: "android" },
+      { onConflict: "token" },
+    );
+  });
+}
+```
+4. Android 13+ requires the runtime permission — Capacitor adds
+   `POST_NOTIFICATIONS` to the manifest automatically; the prompt comes from
+   `requestPermissions()`.
+5. Server side needs no change: the `check-expiries` function already pushes to
+   every row in `push_tokens` via the FCM HTTP v1 API, three times a day
+   (8:00, 13:00, 18:00 IST via `pg_cron`).
+
+### 8.5 Debug APK (for testing)
+```bash
+npx cap open android      # Android Studio → Build → Build Bundle(s)/APK(s) → Build APK(s)
+# or headless:
+cd android && ./gradlew assembleDebug
+# → android/app/build/outputs/apk/debug/app-debug.apk
+```
+Install: `adb install -r app-debug.apk`.
+
+### 8.6 Signed release APK (for distribution)
+```bash
+keytool -genkey -v -keystore tma.jks -alias tma -keyalg RSA -keysize 2048 -validity 10000
+```
+`android/key.properties` (git-ignored):
+```
+storeFile=../../tma.jks
+storePassword=****
+keyAlias=tma
+keyPassword=****
+```
+Wire it in `android/app/build.gradle` under `signingConfigs.release` and
+`buildTypes.release.signingConfig`, then:
+```bash
+cd android && ./gradlew assembleRelease
+# → android/app/build/outputs/apk/release/app-release.apk
+```
+Keep `tma.jks` backed up — losing it blocks future updates on Play Store.
+
+### 8.7 Release checklist
+- [ ] Icons: 192/512 PNG + adaptive icons (`npx @capacitor/assets generate`)
+- [ ] Bump `versionCode` / `versionName` in `android/app/build.gradle`
+- [ ] Auth deep links: register an App Link/custom scheme and pass it as
+      `emailRedirectTo` / password-reset `redirectTo`, otherwise those emails
+      open a browser instead of the app
+- [ ] `viewport-fit=cover` + safe-area padding; verify `<input type="date">`
+      pickers inside the WebView
+- [ ] Test offline behaviour (React Query cache is memory-only)
+- [ ] Verify a push arrives on a real device after sign-in
+
+### 8.8 Costs — everything used here is free
 | Service | Free tier | Notes |
 |---|---|---|
 | Capacitor + Android Studio | Free | Open source |
 | Firebase Cloud Messaging | Free, unmetered | No Blaze plan required for FCM |
-| Supabase / Lovable Cloud | Free tier | DB, auth, edge function, pg_cron |
+| Supabase / Lovable Cloud | Free tier | DB, auth, server functions, pg_cron |
 | Sideloaded APK distribution | Free | Play Store listing is a one-time $25, optional |
 
-### 8.5 Other native concerns
-1. **Auth deep links** — password-reset / confirm emails open a browser. Register
-   an App Link intent-filter or a custom scheme and pass it as `emailRedirectTo`.
-2. **Signing** — `keytool -genkey -v -keystore tma.jks -alias tma -keyalg RSA -keysize 2048 -validity 10000`,
-   wire `signingConfigs` in `android/app/build.gradle`, then `./gradlew assembleRelease`.
-3. **UI** — add `viewport-fit=cover` + safe-area padding, verify `<input type="date">`
-   pickers in the WebView, and test offline (React Query cache is memory-only).
-4. **Icons** — supply 192/512 PNG + adaptive icons; today the manifest only has a favicon.
