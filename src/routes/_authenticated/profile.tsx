@@ -50,6 +50,7 @@ function ProfilePage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -57,6 +58,12 @@ function ProfilePage() {
       setPhone(profile.phone ?? "");
     }
   }, [profile]);
+
+  function handleCancel() {
+    setFullName(profile?.full_name ?? "");
+    setPhone(profile?.phone ?? "");
+    setEditing(false);
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
