@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApprovedEmails } from "@/components/ApprovedEmails";
 import { UserRoles } from "@/components/UserRoles";
 import { useIsAdmin } from "@/lib/access";
-import { LogOut } from "lucide-react";
+import { LogOut, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/profile")({
