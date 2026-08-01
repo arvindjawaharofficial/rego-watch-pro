@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApprovedEmails } from "@/components/ApprovedEmails";
 import { UserRoles } from "@/components/UserRoles";
 import { useIsAdmin } from "@/lib/access";
-import { LogOut } from "lucide-react";
+import { LogOut, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/profile")({
@@ -50,6 +50,7 @@ function ProfilePage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -57,6 +58,12 @@ function ProfilePage() {
       setPhone(profile.phone ?? "");
     }
   }, [profile]);
+
+  function handleCancel() {
+    setFullName(profile?.full_name ?? "");
+    setPhone(profile?.phone ?? "");
+    setEditing(false);
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +83,7 @@ function ProfilePage() {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Profile updated.");
+    setEditing(false);
     queryClient.invalidateQueries({ queryKey: ["profile"] });
   }
 
@@ -113,9 +121,18 @@ function ProfilePage() {
 
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Your account</CardTitle>
-          <CardDescription>Update your name and mobile number.</CardDescription>
+          {!editing && !isLoading && profile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Edit profile"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {isLoading || !profile ? (
@@ -137,6 +154,7 @@ function ProfilePage() {
                 <Input
                   id="p-name"
                   value={fullName}
+                  disabled={!editing}
                   onChange={(e) => setFullName(e.target.value)}
                 />
               </div>
@@ -152,6 +170,7 @@ function ProfilePage() {
                     inputMode="numeric"
                     placeholder="10-digit mobile number"
                     maxLength={10}
+                    disabled={!editing}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                   />
@@ -160,13 +179,28 @@ function ProfilePage() {
                   SMS OTP verification isn't available on the free tier, so the number is saved as-is.
                 </p>
               </div>
-              <Button className="w-full h-12" disabled={saving}>
-                {saving ? "Saving..." : "Save changes"}
-              </Button>
+              {editing && (
+                <div className="flex gap-2">
+                  <Button type="submit" className="flex-1 h-12" disabled={saving}>
+                    {saving ? "Saving..." : "Save changes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 h-12"
+                    disabled={saving}
+                    onClick={handleCancel}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </form>
           )}
         </CardContent>
       </Card>
+
+
 
       <Card>
         <CardHeader>
