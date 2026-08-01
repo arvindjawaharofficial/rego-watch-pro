@@ -83,6 +83,7 @@ function ProfilePage() {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Profile updated.");
+    setEditing(false);
     queryClient.invalidateQueries({ queryKey: ["profile"] });
   }
 
