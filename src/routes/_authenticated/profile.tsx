@@ -200,8 +200,7 @@ function ProfilePage() {
         </CardContent>
       </Card>
 
-        </CardContent>
-      </Card>
+
 
       <Card>
         <CardHeader>
