@@ -421,3 +421,113 @@ Keep `tma.jks` backed up — losing it blocks future updates on Play Store.
 | Supabase / Lovable Cloud | Free tier | DB, auth, server functions, pg_cron |
 | Sideloaded APK distribution | Free | Play Store listing is a one-time $25, optional |
 
+### 8.9 Exact dependency list
+
+Runtime (web + native):
+```bash
+npm i @capacitor/core @capacitor/android @capacitor/app @capacitor/status-bar \
+      @capacitor/splash-screen @capacitor/push-notifications @capacitor/browser
+npm i -D @capacitor/cli @capacitor/assets
+```
+Already in `package.json` and required by the APK build: `react`, `react-dom`,
+`@tanstack/react-router`, `@tanstack/react-query`, `@supabase/supabase-js`,
+`firebase` (web push only — native uses the Capacitor plugin), `sonner`,
+`lucide-react`, `tailwindcss`.
+
+Toolchain versions that are known to work:
+| Tool | Version |
+|---|---|
+| Node | 20 LTS |
+| JDK | 17 |
+| Android SDK / compileSdk | 35 (min 23) |
+| Gradle plugin | as scaffolded by `cap add android` |
+| Capacitor | 7.x (keep core/cli/android on the same major) |
+
+### 8.10 Supabase / backend configuration for the APK
+
+The APK talks to the same backend over HTTPS. Configure it once:
+
+1. **Environment variables** — create `.env` in the project root before building
+   (Vite inlines them at build time, so they must exist at `npm run build`):
+   ```
+   VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=<anon / publishable key>
+   VITE_SUPABASE_PROJECT_ID=<project-ref>
+   VITE_FIREBASE_API_KEY=<firebase web api key>
+   ```
+   These are publishable keys — safe inside the APK. **Never** ship
+   `SUPABASE_SERVICE_ROLE_KEY` or `FIREBASE_SERVICE_ACCOUNT_JSON` in the app;
+   they belong only to server-side secrets.
+2. **Auth URL configuration** (Supabase Auth settings):
+   - Site URL: your published web URL.
+   - Additional redirect URLs: `https://<your-domain>/reset-password`,
+     `capacitor://localhost`, `http://localhost`, and your deep-link scheme
+     `com.tma.fleet://reset-password` if you add one.
+   - Email confirmations: keep enabled; there is no anonymous sign-up.
+3. **Email allowlist** — every APK user must exist in `approved_emails`
+   (Profile → Approved emails, Admin only) with the role they should get.
+4. **Server-side secrets** required by `check-expiries` (set in backend secrets,
+   never in the app): `FIREBASE_SERVICE_ACCOUNT_JSON`, `WHATSAPP_TOKEN`,
+   `WHATSAPP_PHONE_NUMBER_ID`, `ADMIN_WHATSAPP_NUMBER`, and optionally
+   `WHATSAPP_TEMPLATE_NAME` / `WHATSAPP_TEMPLATE_LANG`.
+   `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.
+5. **Cron jobs** — three `pg_cron` schedules already POST to `check-expiries`
+   at 02:30 / 07:30 / 12:30 UTC (08:00 / 13:00 / 18:00 IST). Verify with
+   `select * from cron.job;` and inspect `cron.job_run_details` for failures.
+6. **RLS** stays enabled; the APK uses the anon key plus the signed-in user's
+   JWT, so all policies apply exactly as on the web.
+
+### 8.11 End-to-end build script (copy/paste)
+
+```bash
+# 1. code + deps
+git clone <repo> tma-fleet && cd tma-fleet
+npm install
+
+# 2. env (see 8.10) then build the static bundle
+npm run build                       # -> dist/client
+
+# 3. capacitor (first time only)
+npx cap init "TMA Fleet" com.tma.fleet --web-dir=dist/client
+npx cap add android
+cp ~/Downloads/google-services.json android/app/google-services.json
+
+# 4. icons / splash from a 1024x1024 source in assets/
+npx @capacitor/assets generate --android
+
+# 5. sync + build
+npm run build && npx cap sync android
+cd android && ./gradlew assembleDebug     # or assembleRelease once signed
+```
+
+### 8.12 Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| White screen after install | `webDir` wrong, or `npx cap sync` not re-run after `npm run build` |
+| "Missing Supabase environment variable(s)" | `.env` absent at build time — Vite inlines at build, not runtime |
+| Login works on web, fails in APK | Add `capacitor://localhost` to Supabase redirect URLs |
+| No push on device | `google-services.json` missing/mismatched package name, notification permission denied, or the device token never reached `push_tokens` |
+| Push works on web but not native | Web uses `src/lib/firebase.ts`; native must register via `@capacitor/push-notifications` (see 8.4) |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | Signed with a different key — uninstall the old build first |
+| Gradle "Unsupported class file major version" | Wrong JDK — set Gradle JDK to 17 |
+| Date pickers look wrong | WebView renders `<input type="date">` natively; test on a real device |
+
+## 9. WhatsApp Alerts to the Admin Number
+
+- Implemented in `supabase/functions/check-expiries/index.ts` (`sendWhatsApp`),
+  fired on every scheduled run that produces at least one alert — independent of
+  push delivery, so it works even without FCM.
+- Provider: **Meta WhatsApp Cloud API** (`graph.facebook.com/v21.0/<phone-id>/messages`).
+  Free tier covers a generous monthly volume of service conversations.
+- Secrets: `WHATSAPP_TOKEN` (permanent system-user token),
+  `WHATSAPP_PHONE_NUMBER_ID`, `ADMIN_WHATSAPP_NUMBER` (E.164 digits, e.g.
+  `9198XXXXXXXX`), optional `WHATSAPP_TEMPLATE_NAME` + `WHATSAPP_TEMPLATE_LANG`.
+- Setup: Meta Business → WhatsApp → API setup. Add the admin number as a
+  recipient, copy the phone-number ID, create a system-user token with
+  `whatsapp_business_messaging`, and approve a one-parameter utility template
+  (plain text only delivers inside a 24h window after the admin replies).
+- Failure mode: the function logs the Graph API status + body and returns
+  `whatsapp: "failed_<status>"`; missing secrets return `"not_configured"` and
+  never block push delivery.
+
