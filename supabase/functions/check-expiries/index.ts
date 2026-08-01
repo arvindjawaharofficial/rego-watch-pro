@@ -122,20 +122,25 @@ Deno.serve(async (_req: Request) => {
   }
 
   if (alerts.length === 0) {
-    return new Response(JSON.stringify({ ok: true, alerts: 0, sent: 0 }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, alerts: 0, sent: 0, whatsapp: "skipped" }), { headers: { "Content-Type": "application/json" } });
   }
+
+  const title = `TMA Fleet — ${alerts.length} alert${alerts.length === 1 ? "" : "s"}`;
+  const body = alerts.slice(0, 3).join(" • ") + (alerts.length > 3 ? ` +${alerts.length - 3} more` : "");
+
+  // WhatsApp digest to the admin number (independent of push delivery).
+  const whatsapp = await sendWhatsApp(`*${title}*\n\n${alerts.map((a) => `• ${a}`).join("\n")}`);
 
   const saRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
   if (!saRaw) {
     console.log("FIREBASE_SERVICE_ACCOUNT_JSON not set; skipping push", alerts);
-    return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent: 0, note: "no service account" }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent: 0, whatsapp, note: "no service account" }), { headers: { "Content-Type": "application/json" } });
   }
   const sa = JSON.parse(saRaw);
   const accessToken = await getFcmAccessToken(sa);
 
   const { data: tokens } = await supabase.from("push_tokens").select("token");
-  const title = `Fleet RTO — ${alerts.length} alert${alerts.length === 1 ? "" : "s"}`;
-  const body = alerts.slice(0, 3).join(" • ") + (alerts.length > 3 ? ` +${alerts.length - 3} more` : "");
+
 
   let sent = 0;
   const failed: string[] = [];
