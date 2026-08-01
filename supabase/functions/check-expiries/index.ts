@@ -100,7 +100,47 @@ async function sendFcm(projectId: string, accessToken: string, token: string, ti
   return { ok: res.ok, status: res.status, body: await res.text() };
 }
 
+// -- WhatsApp Cloud API (admin number) ---------------------------------------
+// Secrets: WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, ADMIN_WHATSAPP_NUMBER
+// Optional: WHATSAPP_TEMPLATE_NAME (+ WHATSAPP_TEMPLATE_LANG, default en_US).
+// Plain text only reaches the admin inside a 24h customer-service window;
+// a template works any time, so set the template name for reliable delivery.
+
+async function sendWhatsApp(text: string): Promise<string> {
+  const token = Deno.env.get("WHATSAPP_TOKEN");
+  const phoneId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+  const to = Deno.env.get("ADMIN_WHATSAPP_NUMBER");
+  if (!token || !phoneId || !to) return "not_configured";
+
+  const template = Deno.env.get("WHATSAPP_TEMPLATE_NAME");
+  const payload = template
+    ? {
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name: template,
+          language: { code: Deno.env.get("WHATSAPP_TEMPLATE_LANG") || "en_US" },
+          components: [{ type: "body", parameters: [{ type: "text", text: text.replace(/\n/g, " | ").slice(0, 1000) }] }],
+        },
+      }
+    : { messaging_product: "whatsapp", to, type: "text", text: { preview_url: false, body: text.slice(0, 4000) } };
+
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const resBody = await res.text();
+  if (!res.ok) {
+    console.error(`WhatsApp send failed [${res.status}]: ${resBody}`);
+    return `failed_${res.status}`;
+  }
+  return "sent";
+}
+
 // -----------------------------------------------------------------------------
+
 
 Deno.serve(async (_req: Request) => {
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -122,20 +162,25 @@ Deno.serve(async (_req: Request) => {
   }
 
   if (alerts.length === 0) {
-    return new Response(JSON.stringify({ ok: true, alerts: 0, sent: 0 }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, alerts: 0, sent: 0, whatsapp: "skipped" }), { headers: { "Content-Type": "application/json" } });
   }
+
+  const title = `TMA Fleet — ${alerts.length} alert${alerts.length === 1 ? "" : "s"}`;
+  const body = alerts.slice(0, 3).join(" • ") + (alerts.length > 3 ? ` +${alerts.length - 3} more` : "");
+
+  // WhatsApp digest to the admin number (independent of push delivery).
+  const whatsapp = await sendWhatsApp(`*${title}*\n\n${alerts.map((a) => `• ${a}`).join("\n")}`);
 
   const saRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
   if (!saRaw) {
     console.log("FIREBASE_SERVICE_ACCOUNT_JSON not set; skipping push", alerts);
-    return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent: 0, note: "no service account" }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent: 0, whatsapp, note: "no service account" }), { headers: { "Content-Type": "application/json" } });
   }
   const sa = JSON.parse(saRaw);
   const accessToken = await getFcmAccessToken(sa);
 
   const { data: tokens } = await supabase.from("push_tokens").select("token");
-  const title = `Fleet RTO — ${alerts.length} alert${alerts.length === 1 ? "" : "s"}`;
-  const body = alerts.slice(0, 3).join(" • ") + (alerts.length > 3 ? ` +${alerts.length - 3} more` : "");
+
 
   let sent = 0;
   const failed: string[] = [];
@@ -150,7 +195,7 @@ Deno.serve(async (_req: Request) => {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent, failed_count: failed.length }), {
+  return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent, failed_count: failed.length, whatsapp }), {
     headers: { "Content-Type": "application/json" },
   });
 });
