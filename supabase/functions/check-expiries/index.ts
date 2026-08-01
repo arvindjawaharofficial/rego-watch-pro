@@ -155,7 +155,7 @@ Deno.serve(async (_req: Request) => {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent, failed_count: failed.length }), {
+  return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent, failed_count: failed.length, whatsapp }), {
     headers: { "Content-Type": "application/json" },
   });
 });
