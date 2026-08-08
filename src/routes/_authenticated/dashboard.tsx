@@ -26,6 +26,40 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const { data: isAdmin } = useIsAdmin();
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState<null | { ok: boolean; text: string }>(null);
+
+  const sendWhatsApp = async () => {
+    setSending(true);
+    setStatus(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-expiries", { body: {} });
+      if (error) throw error;
+      const alerts = (data as { alerts?: number })?.alerts ?? 0;
+      const wa = (data as { whatsapp?: string })?.whatsapp ?? "unknown";
+      if (alerts === 0) {
+        setStatus({ ok: true, text: "No alerts — all vehicles up to date, nothing sent." });
+        toast.info("Nothing to send: all vehicles are up to date.");
+      } else if (wa === "sent") {
+        setStatus({ ok: true, text: `Delivered to admin WhatsApp — ${alerts} alert${alerts === 1 ? "" : "s"} in 1 message.` });
+        toast.success("WhatsApp update sent");
+      } else if (wa === "not_configured") {
+        setStatus({ ok: false, text: "WhatsApp is not configured (missing credentials)." });
+        toast.error("WhatsApp not configured");
+      } else {
+        setStatus({ ok: false, text: `WhatsApp delivery failed (${wa}).` });
+        toast.error("WhatsApp delivery failed");
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setStatus({ ok: false, text: `Could not send: ${msg}` });
+      toast.error("Could not send WhatsApp update");
+    } finally {
+      setSending(false);
+    }
+  };
+
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ["vehicles"],
