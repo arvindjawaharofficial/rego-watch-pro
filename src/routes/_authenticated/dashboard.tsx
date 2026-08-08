@@ -1,15 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { VehicleCard } from "@/components/VehicleCard";
 import { VehicleForm } from "@/components/VehicleForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Truck } from "lucide-react";
+import { Plus, Search, Truck, MessageCircle, Loader2 } from "lucide-react";
 import type { Vehicle } from "@/lib/compliance";
 import { overallStatus } from "@/lib/compliance";
+import { useIsAdmin } from "@/lib/access";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
