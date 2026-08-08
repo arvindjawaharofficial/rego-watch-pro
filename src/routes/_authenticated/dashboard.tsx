@@ -104,6 +104,33 @@ function Dashboard() {
         <StatCard color="red" label="Action needed" value={counts.red} />
       </div>
 
+      {isAdmin && (
+        <div className="mb-4 rounded-2xl border p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">WhatsApp update</p>
+              <p className="text-xs text-muted-foreground">
+                Sends all due-soon and action-needed vehicles in one message.
+              </p>
+            </div>
+            <Button
+              onClick={sendWhatsApp}
+              disabled={sending}
+              className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+            >
+              {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-1" />}
+              {sending ? "Sending…" : "Send now"}
+            </Button>
+          </div>
+          {status && (
+            <p className={`mt-2 text-xs font-medium ${status.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+              {status.text}
+            </p>
+          )}
+        </div>
+      )}
+
+
       <div className="relative mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
