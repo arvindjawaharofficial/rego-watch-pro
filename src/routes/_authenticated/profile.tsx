@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApprovedEmails } from "@/components/ApprovedEmails";
 import { UserRoles } from "@/components/UserRoles";
+import { NotificationSettings } from "@/components/NotificationSettings";
 import { useIsAdmin } from "@/lib/access";
 import { LogOut, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -99,10 +100,11 @@ function ProfilePage() {
       <h1 className="text-2xl font-bold tracking-tight mb-4">Profile</h1>
 
       <Tabs defaultValue="account">
-        <TabsList className={`grid w-full mb-4 ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
+        <TabsList className={`grid w-full mb-4 ${isAdmin ? "grid-cols-4" : "grid-cols-1"}`}>
           <TabsTrigger value="account">Account</TabsTrigger>
-          {isAdmin && <TabsTrigger value="approved">Approved emails</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="approved">Emails</TabsTrigger>}
           {isAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="alerts">Alerts</TabsTrigger>}
         </TabsList>
 
         {isAdmin && (
@@ -112,6 +114,9 @@ function ProfilePage() {
             </TabsContent>
             <TabsContent value="users">
               <UserRoles />
+            </TabsContent>
+            <TabsContent value="alerts">
+              <NotificationSettings />
             </TabsContent>
           </>
         )}
