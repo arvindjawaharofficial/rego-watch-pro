@@ -41,6 +41,84 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_recipients: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          kind: string
+          label: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          kind: string
+          label?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          kind?: string
+          label?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          created_at: string
+          id: string
+          singleton: boolean
+          telegram_bot_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          singleton?: boolean
+          telegram_bot_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          singleton?: boolean
+          telegram_bot_token?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_unlock_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          requested_by: string | null
+          used_at: string | null
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          requested_by?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          requested_by?: string | null
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
