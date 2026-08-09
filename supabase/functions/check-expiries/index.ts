@@ -90,7 +90,33 @@ async function sendFcm(projectId: string, accessToken: string, token: string, ti
   return { ok: res.ok, status: res.status, body: await res.text() };
 }
 
+// -- Telegram + email digest (handled by the app's server route) --------------
+
+const APP_URL = "https://rego-watch-pro.lovable.app";
+
+async function triggerDigests(): Promise<string> {
+  const secret = Deno.env.get("NOTIFY_CRON_SECRET");
+  if (!secret) return "not_configured";
+  try {
+    const res = await fetch(`${APP_URL}/api/public/notifications/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-cron-secret": secret },
+      body: "{}",
+    });
+    const body = await res.text();
+    if (!res.ok) {
+      console.error(`Digest trigger failed [${res.status}]: ${body}`);
+      return `failed_${res.status}`;
+    }
+    return body;
+  } catch (e) {
+    console.error("Digest trigger error", e);
+    return "error";
+  }
+}
+
 // -----------------------------------------------------------------------------
+
 
 Deno.serve(async (_req: Request) => {
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
