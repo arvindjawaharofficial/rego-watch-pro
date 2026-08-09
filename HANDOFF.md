@@ -466,10 +466,11 @@ The APK talks to the same backend over HTTPS. Configure it once:
    - Email confirmations: keep enabled; there is no anonymous sign-up.
 3. **Email allowlist** — every APK user must exist in `approved_emails`
    (Profile → Approved emails, Admin only) with the role they should get.
-4. **Server-side secrets** required by `check-expiries` (set in backend secrets,
-   never in the app): `FIREBASE_SERVICE_ACCOUNT_JSON`, `WHATSAPP_TOKEN`,
-   `WHATSAPP_PHONE_NUMBER_ID`, `ADMIN_WHATSAPP_NUMBER`, and optionally
-   `WHATSAPP_TEMPLATE_NAME` / `WHATSAPP_TEMPLATE_LANG`.
+4. **Server-side secrets** required by notifications (set in backend secrets,
+   never in the app): `FIREBASE_SERVICE_ACCOUNT_JSON` (push),
+   `NOTIFY_CRON_SECRET` (guards the digest endpoint), and `LOVABLE_API_KEY` +
+   an email sender domain for email delivery. The Telegram bot token and all
+   recipients live in the database (Profile → Alerts), not in secrets.
    `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.
 5. **Cron jobs** — three `pg_cron` schedules already POST to `check-expiries`
    at 02:30 / 07:30 / 12:30 UTC (08:00 / 13:00 / 18:00 IST). Verify with
