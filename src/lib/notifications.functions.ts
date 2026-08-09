@@ -16,10 +16,11 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden: admin only");
 }
 
-function hash(code: string) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { createHash } = require("node:crypto") as typeof import("node:crypto");
-  return createHash("sha256").update(code).digest("hex");
+async function hash(code: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function maskToken(token: string | null): string | null {
@@ -61,7 +62,7 @@ export const requestUnlockCode = createServerFn({ method: "POST" })
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
     await supabaseAdmin.from("notification_unlock_codes").insert({
-      code_hash: hash(code),
+      code_hash: await hash(code),
       requested_by: (context as any).userId,
       expires_at: expiresAt,
     });
@@ -113,7 +114,7 @@ async function validCode(code: string): Promise<string | null> {
   const { data } = await supabaseAdmin
     .from("notification_unlock_codes")
     .select("id, expires_at, used_at")
-    .eq("code_hash", hash(code))
+    .eq("code_hash", await hash(code))
     .is("used_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
