@@ -514,21 +514,30 @@ cd android && ./gradlew assembleDebug     # or assembleRelease once signed
 | Gradle "Unsupported class file major version" | Wrong JDK — set Gradle JDK to 17 |
 | Date pickers look wrong | WebView renders `<input type="date">` natively; test on a real device |
 
-## 9. WhatsApp Alerts to the Admin Number
+## 9. Telegram + Email Alerts (WhatsApp removed)
 
-- Implemented in `supabase/functions/check-expiries/index.ts` (`sendWhatsApp`),
-  fired on every scheduled run that produces at least one alert — independent of
-  push delivery, so it works even without FCM.
-- Provider: **Meta WhatsApp Cloud API** (`graph.facebook.com/v21.0/<phone-id>/messages`).
-  Free tier covers a generous monthly volume of service conversations.
-- Secrets: `WHATSAPP_TOKEN` (permanent system-user token),
-  `WHATSAPP_PHONE_NUMBER_ID`, `ADMIN_WHATSAPP_NUMBER` (E.164 digits, e.g.
-  `9198XXXXXXXX`), optional `WHATSAPP_TEMPLATE_NAME` + `WHATSAPP_TEMPLATE_LANG`.
-- Setup: Meta Business → WhatsApp → API setup. Add the admin number as a
-  recipient, copy the phone-number ID, create a system-user token with
-  `whatsapp_business_messaging`, and approve a one-parameter utility template
-  (plain text only delivers inside a 24h window after the admin replies).
-- Failure mode: the function logs the Graph API status + body and returns
-  `whatsapp: "failed_<status>"`; missing secrets return `"not_configured"` and
-  never block push delivery.
+- WhatsApp is fully removed. Telegram and email are the default channels.
+- Settings live in the database, admin-only via RLS:
+  - `notification_settings.telegram_bot_token` — the bot token (masked in UI).
+  - `notification_recipients` — `kind` of `telegram` | `email` | `admin_email`,
+    with `is_primary` separating locked core recipients from additional contacts.
+  - `notification_unlock_codes` — hashed 6-digit codes for the unlock flow.
+- Admin UI: **Profile → Alerts** (`src/components/NotificationSettings.tsx`).
+  Core credentials are masked and locked; "Unlock settings" emails a 6-digit
+  code to the configured admin email IDs (falling back to primary Telegram
+  chats when no email sender domain is configured yet). Additional contacts can
+  be added/removed without a code.
+- Server logic: `src/lib/notify.server.ts` (Telegram Bot API + Lovable email)
+  and `src/lib/notifications.functions.ts` (admin-gated server functions:
+  unlock code, save credentials, send now, cascading user delete).
+- Automation: `supabase/functions/check-expiries/index.ts` runs 3×/day, sends
+  FCM push, and POSTs to `/api/public/notifications/run` with the
+  `x-cron-secret` header; that route sends **one combined digest** listing every
+  due-soon and expired document. Nothing is sent when all vehicles are up to date.
+- Manual: the admin-only "Send notification" card on the dashboard and the
+  "Send Notification" button in Profile → Alerts, both showing per-recipient
+  delivery status.
+- Email requires a verified sender domain; until one is configured, email sends
+  report `email_not_configured` while Telegram keeps working.
+
 
