@@ -25,7 +25,13 @@ export function UserRoles() {
         .select("id, email, full_name, role")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      // Pin the Admin (owner) to the very top, regardless of other sorting.
+      return [...rows].sort((a, b) => {
+        const aOwner = (a.email ?? "").toLowerCase() === ADMIN_EMAIL ? 0 : 1;
+        const bOwner = (b.email ?? "").toLowerCase() === ADMIN_EMAIL ? 0 : 1;
+        return aOwner - bOwner;
+      });
     },
   });
 

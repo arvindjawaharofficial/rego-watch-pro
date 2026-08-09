@@ -8,7 +8,9 @@ import { VehicleCard } from "@/components/VehicleCard";
 import { VehicleForm } from "@/components/VehicleForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Truck, MessageCircle, Loader2 } from "lucide-react";
+import { Plus, Search, Truck, Send, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { sendNotificationNow } from "@/lib/notifications.functions";
 import type { Vehicle } from "@/lib/compliance";
 import { overallStatus } from "@/lib/compliance";
 import { useIsAdmin } from "@/lib/access";
@@ -30,36 +32,37 @@ function Dashboard() {
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<null | { ok: boolean; text: string }>(null);
 
-  const sendWhatsApp = async () => {
+  const sendNow = useServerFn(sendNotificationNow);
+
+  const sendAlerts = async () => {
     setSending(true);
     setStatus(null);
     try {
-      const { data, error } = await supabase.functions.invoke("check-expiries", { body: {} });
-      if (error) throw error;
-      const alerts = (data as { alerts?: number })?.alerts ?? 0;
-      const wa = (data as { whatsapp?: string })?.whatsapp ?? "unknown";
-      if (alerts === 0) {
+      const res = await sendNow({});
+      if (res.alerts === 0) {
         setStatus({ ok: true, text: "No alerts — all vehicles up to date, nothing sent." });
         toast.info("Nothing to send: all vehicles are up to date.");
-      } else if (wa === "sent") {
-        setStatus({ ok: true, text: `Delivered to admin WhatsApp — ${alerts} alert${alerts === 1 ? "" : "s"} in 1 message.` });
-        toast.success("WhatsApp update sent");
-      } else if (wa === "not_configured") {
-        setStatus({ ok: false, text: "WhatsApp is not configured (missing credentials)." });
-        toast.error("WhatsApp not configured");
-      } else {
-        setStatus({ ok: false, text: `WhatsApp delivery failed (${wa}).` });
-        toast.error("WhatsApp delivery failed");
+        return;
       }
+      const parts = [
+        ...res.telegram.map((t: { to: string; ok: boolean; detail: string }) => `Telegram → ${t.to}: ${t.ok ? "delivered" : t.detail}`),
+        ...res.email.map((t: { to: string; ok: boolean; detail: string }) => `Email → ${t.to}: ${t.ok ? "delivered" : t.detail}`),
+      ];
+      const anyOk = [...res.telegram, ...res.email].some((r: { ok: boolean }) => r.ok);
+      setStatus({
+        ok: anyOk,
+        text: `${res.alerts} alert${res.alerts === 1 ? "" : "s"} in 1 message. ${parts.join(" · ")}`,
+      });
+      if (anyOk) toast.success("Notification sent");
+      else toast.error("Delivery failed — check notification settings");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       setStatus({ ok: false, text: `Could not send: ${msg}` });
-      toast.error("Could not send WhatsApp update");
+      toast.error("Could not send notification");
     } finally {
       setSending(false);
     }
   };
-
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ["vehicles"],
@@ -108,17 +111,17 @@ function Dashboard() {
         <div className="mb-4 rounded-2xl border p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium">WhatsApp update</p>
+              <p className="text-sm font-medium">Send notification</p>
               <p className="text-xs text-muted-foreground">
-                Sends all due-soon and action-needed vehicles in one message.
+                Sends all due-soon and action-needed vehicles to Telegram and email in one message.
               </p>
             </div>
             <Button
-              onClick={sendWhatsApp}
+              onClick={sendAlerts}
               disabled={sending}
               className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
             >
-              {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-1" />}
+              {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
               {sending ? "Sending…" : "Send now"}
             </Button>
           </div>
