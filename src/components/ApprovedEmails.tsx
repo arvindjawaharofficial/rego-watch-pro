@@ -15,6 +15,8 @@ import {
 import { Trash2, Plus, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { ADMIN_EMAIL } from "@/lib/access";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteApprovedUser } from "@/lib/notifications.functions";
 
 type Role = "Admin" | "Manager";
 
@@ -80,14 +82,16 @@ export function ApprovedEmails() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const removeUser = useServerFn(deleteApprovedUser);
   const removeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("approved_emails").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Email removed.");
+    mutationFn: ({ id, email }: { id: string; email: string }) =>
+      removeUser({ data: { id, email } }),
+    onSuccess: (res) => {
+      toast.success(
+        res.userDeleted ? "Email removed and user account deleted." : "Email removed.",
+      );
       queryClient.invalidateQueries({ queryKey: ["approved-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -164,7 +168,7 @@ export function ApprovedEmails() {
                           variant="ghost"
                           size="icon"
                           aria-label={`Remove ${r.email}`}
-                          onClick={() => removeMutation.mutate(r.id)}
+                          onClick={() => removeMutation.mutate({ id: r.id, email: r.email })}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
