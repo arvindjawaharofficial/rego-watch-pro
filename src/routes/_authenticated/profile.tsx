@@ -140,8 +140,13 @@ function ProfilePage() {
           ) : (
             <form className="space-y-4" onSubmit={handleSave}>
               <div>
-                <Label>Email</Label>
-                <Input value={profile.email ?? ""} disabled />
+                <Label htmlFor="p-name">Full name</Label>
+                <Input
+                  id="p-name"
+                  value={fullName}
+                  disabled={!editing}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
               </div>
               <div>
                 <Label>Role</Label>
@@ -150,13 +155,8 @@ function ProfilePage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="p-name">Full name</Label>
-                <Input
-                  id="p-name"
-                  value={fullName}
-                  disabled={!editing}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
+                <Label>Email</Label>
+                <Input value={profile.email ?? ""} disabled />
               </div>
               <div>
                 <Label htmlFor="p-phone">Mobile number</Label>
