@@ -144,10 +144,13 @@ Deno.serve(async (_req: Request) => {
   const title = `TMA Fleet — ${alerts.length} alert${alerts.length === 1 ? "" : "s"}`;
   const body = alerts.slice(0, 3).join(" • ") + (alerts.length > 3 ? ` +${alerts.length - 3} more` : "");
 
+  // One combined Telegram + email digest to all configured recipients.
+  const digests = await triggerDigests();
+
   const saRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
   if (!saRaw) {
     console.log("FIREBASE_SERVICE_ACCOUNT_JSON not set; skipping push", alerts);
-    return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent: 0, note: "no service account" }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, alerts: alerts.length, sent: 0, digests, note: "no service account" }), { headers: { "Content-Type": "application/json" } });
   }
   const sa = JSON.parse(saRaw);
   const accessToken = await getFcmAccessToken(sa);
