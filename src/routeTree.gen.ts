@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedVehiclesVehicleIdRouteImport } from './routes/_authenticated/vehicles.$vehicleId'
+import { Route as ApiPublicNotificationsRunRouteImport } from './routes/api/public/notifications/run'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -52,6 +53,12 @@ const AuthenticatedVehiclesVehicleIdRoute =
     path: '/vehicles/$vehicleId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicNotificationsRunRoute =
+  ApiPublicNotificationsRunRouteImport.update({
+    id: '/api/public/notifications/run',
+    path: '/api/public/notifications/run',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -60,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
+  '/api/public/notifications/run': typeof ApiPublicNotificationsRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,6 +76,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
+  '/api/public/notifications/run': typeof ApiPublicNotificationsRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,6 +87,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
+  '/api/public/notifications/run': typeof ApiPublicNotificationsRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/profile'
     | '/vehicles/$vehicleId'
+    | '/api/public/notifications/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/profile'
     | '/vehicles/$vehicleId'
+    | '/api/public/notifications/run'
   id:
     | '__root__'
     | '/'
@@ -105,6 +117,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/profile'
     | '/_authenticated/vehicles/$vehicleId'
+    | '/api/public/notifications/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -112,6 +125,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicNotificationsRunRoute: typeof ApiPublicNotificationsRunRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -165,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVehiclesVehicleIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/notifications/run': {
+      id: '/api/public/notifications/run'
+      path: '/api/public/notifications/run'
+      fullPath: '/api/public/notifications/run'
+      preLoaderRoute: typeof ApiPublicNotificationsRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -188,6 +209,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicNotificationsRunRoute: ApiPublicNotificationsRunRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
