@@ -1,5 +1,4 @@
 // Server-only notification helpers (Telegram + Email).
-import { sendLovableEmail, EmailAPIError } from "@lovable.dev/email-js";
 
 export type SendResult = { ok: boolean; detail: string };
 
@@ -22,34 +21,39 @@ export async function sendTelegram(
   return { ok: true, detail: "sent" };
 }
 
+// NEW: Use Supabase Edge Function for email (same service as sign-up verification)
 export async function sendEmail(
   to: string,
   subject: string,
   text: string,
 ): Promise<SendResult> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  const senderDomain = process.env["EMAIL_SENDER_DOMAIN"] ?? process.env["SENDER_DOMAIN"];
-  if (!apiKey || !senderDomain) return { ok: false, detail: "email_not_configured" };
-
-  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap">${escapeHtml(text)}</div>`;
   try {
-    await sendLovableEmail(
+    const supabaseUrl = process.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
+    const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return { ok: false, detail: "email_not_configured" };
+    }
+
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/send-notification-email`,
       {
-        to,
-        from: `TMA Fleet <alerts@${senderDomain}>`,
-        sender_domain: senderDomain,
-        subject,
-        html,
-        text,
-      },
-      { apiKey },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({ to, subject, text }),
+      }
     );
+
+    const result = await response.json();
+    if (!response.ok) {
+      console.error(`Email send failed: ${result.detail}`);
+      return { ok: false, detail: result.detail };
+    }
     return { ok: true, detail: "sent" };
   } catch (e) {
-    if (e instanceof EmailAPIError) {
-      console.error(`Email send failed [${e.status}]: ${e.message}`);
-      return { ok: false, detail: e.code ?? `failed_${e.status}` };
-    }
     console.error("Email send failed", e);
     return { ok: false, detail: "failed" };
   }
