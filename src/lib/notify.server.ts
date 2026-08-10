@@ -21,20 +21,22 @@ export async function sendTelegram(
   return { ok: true, detail: "sent" };
 }
 
-// Use Supabase's built-in email service (same as sign-up verification)
+// Use Supabase's built-in email service - same as sign-up (client-side Supabase)
 export async function sendEmail(
   to: string,
   subject: string,
   text: string,
 ): Promise<SendResult> {
   try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabase } = await import("@/integrations/supabase/client");
 
-    // Use Supabase's OTP email service (sends actual emails)
-    // This uses the same SMTP configuration as sign-up verification
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "email_otp",
+    // Use client-side Supabase to send OTP email
+    // This is the same Supabase instance used for sign-up
+    const { error } = await supabase.auth.signInWithOtp({
       email: to,
+      options: {
+        shouldCreateUser: false,  // Don't create a new user, just send email
+      },
     });
 
     if (error) {
@@ -42,8 +44,6 @@ export async function sendEmail(
       return { ok: false, detail: error.message };
     }
 
-    // The generateLink with email_otp type sends an OTP to the email
-    // The data contains the verification link if needed
     console.log(`Email sent successfully to ${to}`);
     return { ok: true, detail: "sent" };
   } catch (e) {
