@@ -138,19 +138,17 @@ export function NotificationSettings() {
   const test = useMutation({
     mutationFn: () => sendNow({}),
     onSuccess: (res) => {
-      if (res.alerts === 0) {
-        setTestStatus(["All vehicles are up to date — nothing was sent."]);
-        toast.info("Nothing to send: all vehicles up to date.");
-        return;
-      }
       const lines = [
-        `${res.alerts} alert${res.alerts === 1 ? "" : "s"} in one message`,
+        res.alerts === 0
+          ? "All vehicles up to date — sent as an all-clear message"
+          : `${res.alerts} alert${res.alerts === 1 ? "" : "s"} in one message`,
         ...res.telegram.map((t: any) => `Telegram → ${t.to}: ${t.ok ? "delivered" : t.detail}`),
         ...res.email.map((t: any) => `Email → ${t.to}: ${t.ok ? "delivered" : t.detail}`),
       ];
       setTestStatus(lines);
       toast.success("Notification dispatched.");
     },
+
     onError: (e: Error) => {
       setTestStatus([`Failed: ${e.message}`]);
       toast.error(e.message);
