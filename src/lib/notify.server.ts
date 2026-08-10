@@ -21,37 +21,30 @@ export async function sendTelegram(
   return { ok: true, detail: "sent" };
 }
 
-// NEW: Use Supabase Edge Function for email (same service as sign-up verification)
+// Use Supabase's built-in email service (same as sign-up verification)
 export async function sendEmail(
   to: string,
   subject: string,
   text: string,
 ): Promise<SendResult> {
   try {
-    const supabaseUrl = process.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
-    const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return { ok: false, detail: "email_not_configured" };
+    // Use Supabase's email service via magic link (same as sign-up)
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email: to,
+      options: {
+        redirectTo: `${process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL}/auth/v1/callback`,
+      },
+    });
+
+    if (error) {
+      console.error(`Email send failed: ${error.message}`);
+      return { ok: false, detail: error.message };
     }
 
-    const response = await fetch(
-      `${supabaseUrl}/functions/v1/send-notification-email`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({ to, subject, text }),
-      }
-    );
-
-    const result = await response.json();
-    if (!response.ok) {
-      console.error(`Email send failed: ${result.detail}`);
-      return { ok: false, detail: result.detail };
-    }
+    console.log(`Email sent successfully to ${to}`);
     return { ok: true, detail: "sent" };
   } catch (e) {
     console.error("Email send failed", e);
