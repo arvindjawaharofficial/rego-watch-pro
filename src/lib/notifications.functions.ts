@@ -216,10 +216,15 @@ export const sendNotificationNow = createServerFn({ method: "POST" })
         "license_plate, insurance_expiry, fc_expiry, puc_expiry, road_tax_expiry, permit_expiry, rc_expiry",
       );
     const lines = buildAlertLines((vehicles ?? []) as any);
-    if (lines.length === 0) {
-      return { alerts: 0, telegram: [] as any[], email: [] as any[] };
-    }
-    const { subject, text } = formatDigest(lines);
+    const count = (vehicles ?? []).length;
+    const { subject, text } =
+      lines.length === 0
+        ? {
+            subject: "TMA Fleet — all vehicles up to date",
+            text: `TMA Fleet — all vehicles up to date\n\nAll ${count} vehicle${count === 1 ? "" : "s"} have valid documents. No action needed.`,
+          }
+        : formatDigest(lines);
+
 
     const { data: settings } = await supabaseAdmin
       .from("notification_settings")
