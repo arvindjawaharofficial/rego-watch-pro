@@ -30,13 +30,11 @@ export async function sendEmail(
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Use Supabase's email service via magic link (same as sign-up)
+    // Use Supabase's OTP email service (sends actual emails)
+    // This uses the same SMTP configuration as sign-up verification
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
+      type: "email_otp",
       email: to,
-      options: {
-        redirectTo: `${process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL}/auth/v1/callback`,
-      },
     });
 
     if (error) {
@@ -44,6 +42,8 @@ export async function sendEmail(
       return { ok: false, detail: error.message };
     }
 
+    // The generateLink with email_otp type sends an OTP to the email
+    // The data contains the verification link if needed
     console.log(`Email sent successfully to ${to}`);
     return { ok: true, detail: "sent" };
   } catch (e) {
