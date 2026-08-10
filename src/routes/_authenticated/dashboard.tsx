@@ -39,20 +39,17 @@ function Dashboard() {
     setStatus(null);
     try {
       const res = await sendNow({});
-      if (res.alerts === 0) {
-        setStatus({ ok: true, text: "No alerts — all vehicles up to date, nothing sent." });
-        toast.info("Nothing to send: all vehicles are up to date.");
-        return;
-      }
       const parts = [
         ...res.telegram.map((t: { to: string; ok: boolean; detail: string }) => `Telegram → ${t.to}: ${t.ok ? "delivered" : t.detail}`),
         ...res.email.map((t: { to: string; ok: boolean; detail: string }) => `Email → ${t.to}: ${t.ok ? "delivered" : t.detail}`),
       ];
       const anyOk = [...res.telegram, ...res.email].some((r: { ok: boolean }) => r.ok);
-      setStatus({
-        ok: anyOk,
-        text: `${res.alerts} alert${res.alerts === 1 ? "" : "s"} in 1 message. ${parts.join(" · ")}`,
-      });
+      const headline =
+        res.alerts === 0
+          ? "All vehicles up to date — all-clear message sent."
+          : `${res.alerts} alert${res.alerts === 1 ? "" : "s"} in 1 message.`;
+      setStatus({ ok: anyOk, text: `${headline} ${parts.join(" · ")}` });
+
       if (anyOk) toast.success("Notification sent");
       else toast.error("Delivery failed — check notification settings");
     } catch (e) {
