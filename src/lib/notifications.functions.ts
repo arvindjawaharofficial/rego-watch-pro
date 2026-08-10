@@ -51,47 +51,54 @@ export const getNotificationConfig = createServerFn({ method: "GET" })
     };
   });
 
-/** Sends a 6-digit unlock code to the configured admin email IDs (Telegram fallback). */
+/** Sends a 6-digit unlock code to the configured admin email IDs using the built-in auth email sender. */
 export const requestUnlockCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context as any);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendEmail, sendTelegram } = await import("@/lib/notify.server");
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-    await supabaseAdmin.from("notification_unlock_codes").insert({
-      code_hash: await hash(code),
-      requested_by: (context as any).userId,
-      expires_at: expiresAt,
-    });
-
-    const { data: settings } = await supabaseAdmin
-      .from("notification_settings")
-      .select("telegram_bot_token")
-      .limit(1)
-      .maybeSingle();
     const { data: admins } = await supabaseAdmin
       .from("notification_recipients")
       .select("value")
       .eq("kind", "admin_email");
-    const { data: chats } = await supabaseAdmin
-      .from("notification_recipients")
-      .select("value")
-      .eq("kind", "telegram")
-      .eq("is_primary", true);
 
-    const text = `TMA Fleet security code: ${code}\n\nUse it to unlock notification core credentials. Expires in 15 minutes.`;
     const emailResults: { to: string; detail: string; ok: boolean }[] = [];
     for (const a of admins ?? []) {
-      const r = await sendEmail(a.value as string, "TMA Fleet — unlock code", text);
-      emailResults.push({ to: a.value as string, ...r });
+      const to = a.value as string;
+      const { error } = await supabaseAdmin.auth.signInWithOtp({
+        email: to,
+        options: { shouldCreateUser: false },
+      });
+      emailResults.push({
+        to,
+        ok: !error,
+        detail: error ? error.message : "sent",
+      });
     }
 
     const emailDelivered = emailResults.some((r) => r.ok);
-    let telegramFallback = false;
     if (!emailDelivered) {
+      // Fallback: primary Telegram chats get a locally generated code.
+      const { sendTelegram } = await import("@/lib/notify.server");
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      await supabaseAdmin.from("notification_unlock_codes").insert({
+        code_hash: await hash(code),
+        requested_by: (context as any).userId,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      });
+      const { data: settings } = await supabaseAdmin
+        .from("notification_settings")
+        .select("telegram_bot_token")
+        .limit(1)
+        .maybeSingle();
+      const { data: chats } = await supabaseAdmin
+        .from("notification_recipients")
+        .select("value")
+        .eq("kind", "telegram")
+        .eq("is_primary", true);
+      let telegramFallback = false;
+      const text = `TMA Fleet security code: ${code}\n\nUse it to unlock notification core credentials. Expires in 15 minutes.`;
       for (const c of chats ?? []) {
         const r = await sendTelegram(
           settings?.telegram_bot_token as string | null,
@@ -100,13 +107,10 @@ export const requestUnlockCode = createServerFn({ method: "POST" })
         );
         if (r.ok) telegramFallback = true;
       }
+      return { emailResults, emailDelivered, telegramFallback };
     }
 
-    return {
-      emailResults,
-      emailDelivered,
-      telegramFallback,
-    };
+    return { emailResults, emailDelivered, telegramFallback: false };
   });
 
 async function validCode(code: string): Promise<string | null> {
@@ -129,10 +133,35 @@ export const verifyUnlockCode = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string }) => z.object({ code: z.string().trim().length(6) }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context as any);
-    const id = await validCode(data.code);
-    if (!id) throw new Error("Invalid or expired code");
-    return { ok: true };
+
+    // Already-recorded code (Telegram fallback path).
+    if (await validCode(data.code)) return { ok: true };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: admins } = await supabaseAdmin
+      .from("notification_recipients")
+      .select("value")
+      .eq("kind", "admin_email");
+
+    for (const a of admins ?? []) {
+      const { error } = await supabaseAdmin.auth.verifyOtp({
+        email: a.value as string,
+        token: data.code,
+        type: "email",
+      });
+      if (!error) {
+        // Record it so the follow-up save can validate the same code once.
+        await supabaseAdmin.from("notification_unlock_codes").insert({
+          code_hash: await hash(data.code),
+          requested_by: (context as any).userId,
+          expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        });
+        return { ok: true };
+      }
+    }
+    throw new Error("Invalid or expired code");
   });
+
 
 export const saveCoreCredentials = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
