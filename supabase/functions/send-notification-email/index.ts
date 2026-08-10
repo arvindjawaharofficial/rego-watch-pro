@@ -7,17 +7,11 @@ interface EmailRequest {
 }
 
 Deno.serve(async (req: Request) => {
-  // Only allow POST requests
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
     const { to, subject, text }: EmailRequest = await req.json();
 
     // Validate input
@@ -37,14 +31,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Use Supabase's built-in email service via magic link
-    // This uses the same SMTP configuration as sign-up verification
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: "magiclink",
-      email: to,
-      options: {
-        redirectTo: `${Deno.env.get("SUPABASE_URL")}/auth/v1/callback`,
-      },
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Send email using Supabase's native email service
+    // This will send via the same SMTP as your sign-up verification
+    const { error } = await supabase.auth.admin.sendRawEmail({
+      to,
+      subject,
+      html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap">${escapeHtml(text)}</div>`,
     });
 
     if (error) {
@@ -71,3 +68,11 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
