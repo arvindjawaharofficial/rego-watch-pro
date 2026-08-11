@@ -22,18 +22,48 @@ export async function sendTelegram(
 }
 
 /**
- * Email delivery. Real email sending requires a verified sender domain for this
- * project. Until that exists we must NOT fall back to Supabase auth emails —
- * that sent recipients a sign-in magic link instead of the intended message.
+ * Email delivery via a Google Apps Script web app webhook (free, no sender domain).
+ * Configure EMAIL_WEBHOOK_URL (and optionally EMAIL_WEBHOOK_TOKEN) as backend secrets.
+ * The script receives JSON: { token, to, subject, text } and calls MailApp.sendEmail.
  */
 export async function sendEmail(
   to: string,
-  _subject: string,
-  _text: string,
+  subject: string,
+  text: string,
 ): Promise<SendResult> {
-  console.warn(`Email to ${to} skipped: no sender domain configured for this project.`);
-  return { ok: false, detail: "email sender domain not set up yet" };
+  const url = process.env["EMAIL_WEBHOOK_URL"];
+  if (!url) {
+    console.warn(`Email to ${to} skipped: EMAIL_WEBHOOK_URL not configured.`);
+    return { ok: false, detail: "email webhook not configured yet" };
+  }
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      redirect: "follow",
+      body: JSON.stringify({
+        token: process.env["EMAIL_WEBHOOK_TOKEN"] ?? "",
+        to,
+        subject,
+        text,
+      }),
+    });
+    const body = await res.text();
+    if (!res.ok) {
+      console.error(`Email webhook failed [${res.status}]: ${body}`);
+      return { ok: false, detail: `failed_${res.status}` };
+    }
+    if (/"?ok"?\s*[:=]\s*false|error/i.test(body)) {
+      console.error(`Email webhook rejected: ${body}`);
+      return { ok: false, detail: body.slice(0, 120) };
+    }
+    return { ok: true, detail: "sent" };
+  } catch (e) {
+    console.error(`Email webhook error: ${String(e)}`);
+    return { ok: false, detail: "webhook_unreachable" };
+  }
 }
+
 
 
 function escapeHtml(s: string): string {
