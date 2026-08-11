@@ -9,9 +9,13 @@ export const Route = createFileRoute("/api/public/notifications/run")({
     handlers: {
       POST: async ({ request }) => {
         const secret = process.env["NOTIFY_CRON_SECRET"];
-        if (!secret || request.headers.get("x-cron-secret") !== secret) {
+        const anonKey = process.env["SUPABASE_ANON_KEY"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+        const okSecret = Boolean(secret) && request.headers.get("x-cron-secret") === secret;
+        const okApiKey = Boolean(anonKey) && request.headers.get("apikey") === anonKey;
+        if (!okSecret && !okApiKey) {
           return new Response("Unauthorized", { status: 401 });
         }
+
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { sendEmail, sendTelegram, buildAlertLines, formatDigest } = await import(
