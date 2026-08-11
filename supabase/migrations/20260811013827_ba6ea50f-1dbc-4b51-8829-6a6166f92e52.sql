@@ -1,0 +1,2 @@
+select cron.unschedule('tma-digest-1800ist');
+select cron.schedule('tma-digest-1800ist','30 12 * * *', $$select net.http_post(url:='https://rego-watch-pro.lovable.app/api/public/notifications/run', headers:='{"Content-Type":"application/json","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpidmZseGhkdWJxcmlra2JmYmRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTk3OTgsImV4cCI6MjEwMDI3NTc5OH0.AnRYDx5W7bmShSCH30D99TGZGKKr3V0YtgaXeDpbZ38"}'::jsonb, body:='{}'::jsonb)$$);

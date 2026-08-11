@@ -21,36 +21,20 @@ export async function sendTelegram(
   return { ok: true, detail: "sent" };
 }
 
-// Use Supabase's built-in email service - same as sign-up (client-side Supabase)
+/**
+ * Email delivery. Real email sending requires a verified sender domain for this
+ * project. Until that exists we must NOT fall back to Supabase auth emails —
+ * that sent recipients a sign-in magic link instead of the intended message.
+ */
 export async function sendEmail(
   to: string,
-  subject: string,
-  text: string,
+  _subject: string,
+  _text: string,
 ): Promise<SendResult> {
-  try {
-    const { supabase } = await import("@/integrations/supabase/client");
-
-    // Use client-side Supabase to send OTP email
-    // This is the same Supabase instance used for sign-up
-    const { error } = await supabase.auth.signInWithOtp({
-      email: to,
-      options: {
-        shouldCreateUser: false,  // Don't create a new user, just send email
-      },
-    });
-
-    if (error) {
-      console.error(`Email send failed: ${error.message}`);
-      return { ok: false, detail: error.message };
-    }
-
-    console.log(`Email sent successfully to ${to}`);
-    return { ok: true, detail: "sent" };
-  } catch (e) {
-    console.error("Email send failed", e);
-    return { ok: false, detail: "failed" };
-  }
+  console.warn(`Email to ${to} skipped: no sender domain configured for this project.`);
+  return { ok: false, detail: "email sender domain not set up yet" };
 }
+
 
 function escapeHtml(s: string): string {
   return s
