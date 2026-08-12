@@ -20,12 +20,20 @@ export function UserRoles() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["all-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, email, full_name, role")
-        .order("created_at", { ascending: true });
+      const [{ data, error }, { data: approved, error: appErr }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, email, full_name, role")
+          .order("created_at", { ascending: true }),
+        supabase.from("approved_emails").select("email"),
+      ]);
       if (error) throw error;
-      const rows = data ?? [];
+      if (appErr) throw appErr;
+      const allowed = new Set(
+        (approved ?? []).map((a) => (a.email ?? "").toLowerCase()).concat(ADMIN_EMAIL),
+      );
+      // Only show users whose email is still on the approved list.
+      const rows = (data ?? []).filter((r) => allowed.has((r.email ?? "").toLowerCase()));
       // Pin the Admin (owner) to the very top, regardless of other sorting.
       return [...rows].sort((a, b) => {
         const aOwner = (a.email ?? "").toLowerCase() === ADMIN_EMAIL ? 0 : 1;
@@ -34,6 +42,7 @@ export function UserRoles() {
       });
     },
   });
+
 
   const setRole = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: Role }) => {
