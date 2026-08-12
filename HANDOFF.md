@@ -1,4 +1,4 @@
-# Fleet RTO — Developer Handoff & Technical Documentation
+# TMA Fleet — Developer Handoff & Technical Documentation
 
 A mobile-first PWA for tracking Indian RTO compliance documents (Insurance, FC, PUC, Road Tax, Permit, RC) across a vehicle fleet, with FCM push notifications and a daily expiry-check cron.
 
@@ -189,7 +189,7 @@ The app is a mobile-first PWA and is a good Capacitor candidate. Steps:
 
 ```bash
 bun add @capacitor/core @capacitor/cli @capacitor/android
-bunx cap init "Fleet RTO" com.yourcompany.fleetrto --web-dir=dist
+bunx cap init "TMA Fleet" com.yourcompany.fleetrto --web-dir=dist
 bun run build          # produces dist/
 bunx cap add android
 bunx cap sync android
@@ -201,7 +201,7 @@ bunx cap open android  # opens Android Studio → Build > Generate Signed APK
 import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.yourcompany.fleetrto',
-  appName: 'Fleet RTO',
+  appName: 'TMA Fleet',
   webDir: 'dist',
   server: { androidScheme: 'https' },
 };
