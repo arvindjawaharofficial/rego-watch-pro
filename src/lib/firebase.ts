@@ -62,7 +62,7 @@ export function listenForegroundMessages(handler: (title: string, body: string) 
     if (!ok) return;
     const messaging = getMessaging(getFirebaseApp());
     onMessage(messaging, (payload) => {
-      const title = payload.notification?.title || payload.data?.title || "Fleet RTO";
+      const title = payload.notification?.title || payload.data?.title || "TMA Fleet";
       const body = payload.notification?.body || payload.data?.body || "";
       handler(title, body);
     });

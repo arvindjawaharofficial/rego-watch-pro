@@ -15,7 +15,7 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || payload.data?.title || "Fleet RTO";
+  const title = payload.notification?.title || payload.data?.title || "TMA Fleet";
   const body = payload.notification?.body || payload.data?.body || "";
   const url = payload.data?.url || "/dashboard";
   self.registration.showNotification(title, {
