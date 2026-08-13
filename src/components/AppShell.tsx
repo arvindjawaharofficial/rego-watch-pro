@@ -30,12 +30,12 @@ function useVehicleAlerts() {
         plate: string;
         doc: string;
         days: number | null;
-        severity: "expired" | "expiring";
+        severity: "expired" | "expiring" | "missing";
       }[] = [];
       for (const v of (data ?? []) as Vehicle[]) {
         for (const { key, short } of DOC_FIELDS) {
           const sev = severityFor(v[key] as string | null);
-          if (sev === "expired" || sev === "expiring") {
+          if (sev === "expired" || sev === "expiring" || sev === "missing") {
             alerts.push({
               vehicleId: v.id,
               plate: v.license_plate,
@@ -46,7 +46,11 @@ function useVehicleAlerts() {
           }
         }
       }
-      return alerts.sort((a, b) => (a.days ?? -999) - (b.days ?? -999));
+      const rank = { missing: 0, expired: 1, expiring: 2 } as const;
+      return alerts.sort(
+        (a, b) => rank[a.severity] - rank[b.severity] || (a.days ?? 0) - (b.days ?? 0),
+      );
+
     },
     refetchInterval: 60_000,
   });
