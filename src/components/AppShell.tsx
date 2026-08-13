@@ -30,12 +30,12 @@ function useVehicleAlerts() {
         plate: string;
         doc: string;
         days: number | null;
-        severity: "expired" | "expiring";
+        severity: "expired" | "expiring" | "missing";
       }[] = [];
       for (const v of (data ?? []) as Vehicle[]) {
         for (const { key, short } of DOC_FIELDS) {
           const sev = severityFor(v[key] as string | null);
-          if (sev === "expired" || sev === "expiring") {
+          if (sev === "expired" || sev === "expiring" || sev === "missing") {
             alerts.push({
               vehicleId: v.id,
               plate: v.license_plate,
@@ -46,7 +46,11 @@ function useVehicleAlerts() {
           }
         }
       }
-      return alerts.sort((a, b) => (a.days ?? -999) - (b.days ?? -999));
+      const rank = { missing: 0, expired: 1, expiring: 2 } as const;
+      return alerts.sort(
+        (a, b) => rank[a.severity] - rank[b.severity] || (a.days ?? 0) - (b.days ?? 0),
+      );
+
     },
     refetchInterval: 60_000,
   });
@@ -149,7 +153,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-14rem)] pr-1">
 
                   {alerts.length === 0 && (
-                    <p className="text-sm text-muted-foreground">All clear. No documents expiring soon.</p>
+                    <p className="text-sm text-muted-foreground">
+                      All clear. No missing or expiring documents.
+                    </p>
                   )}
                   {alerts.map((a, i) => (
                     <Link
@@ -158,24 +164,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       params={{ vehicleId: a.vehicleId }}
                       className={cn(
                         "block rounded-xl border p-3 hover:bg-accent transition-colors",
-                        a.severity === "expired" ? "border-destructive/30 bg-destructive/5" : "border-yellow-500/40 bg-yellow-500/5",
+                        a.severity === "expiring"
+                          ? "border-yellow-500/40 bg-yellow-500/5"
+                          : "border-destructive/30 bg-destructive/5",
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-sm truncate">{a.plate}</span>
-                        <Badge variant={a.severity === "expired" ? "destructive" : "secondary"}>
-                          {a.severity === "expired" ? "Expired" : "Soon"}
+                        <Badge variant={a.severity === "expiring" ? "secondary" : "destructive"}>
+                          {a.severity === "missing" ? "Missing" : a.severity === "expired" ? "Expired" : "Soon"}
                         </Badge>
                       </div>
                       <p className="text-sm mt-1">
                         {a.doc}{" "}
-                        {a.severity === "expired"
-                          ? `expired ${Math.abs(a.days ?? 0)} day${Math.abs(a.days ?? 0) === 1 ? "" : "s"} ago`
-                          : `expires in ${a.days} day${a.days === 1 ? "" : "s"}`}
-                        !
+                        {a.severity === "missing"
+                          ? "date not added yet — please update it."
+                          : a.severity === "expired"
+                            ? `expired ${Math.abs(a.days ?? 0)} day${Math.abs(a.days ?? 0) === 1 ? "" : "s"} ago!`
+                            : `expires in ${a.days} day${a.days === 1 ? "" : "s"}!`}
                       </p>
                     </Link>
                   ))}
+
                 </div>
               </SheetContent>
             </Sheet>
